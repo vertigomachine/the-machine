@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vertigo, the machine</title>
+  <link rel="stylesheet" href="https://unpkg.com/98.css">
+  <style>
+    :root {
+      --color-desktop: #008080;
+      --color-window-bg: #c0c0c0;
+      --color-term-bg: #000000;
+      --color-term-text: #00ff00;
+      --color-glow: rgba(0, 255, 0, 0.6);
+      --font-ui: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      --font-mono: 'Consolas', 'Courier New', monospace;
+      --z-index-base: 10;
+    }
+
+    body {
+      background-color: var(--color-desktop);
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      font-family: var(--font-ui);
+      user-select: none;
+      cursor: default;
+      font-size: 14px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .no-margin-top {
+      margin-top: 0;
+    }
+
+    .mb-md {
+      margin-bottom: 15px;
+    }
+
+    .desktop-icons {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+      z-index: 1;
+    }
+
+    .desktop-icon {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 80px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .desktop-icon img {
+      width: 32px;
+      height: 32px;
+      margin-bottom: 5px;
+      image-rendering: pixelated;
+    }
+
+    .desktop-icon span {
+      color: white;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px 4px;
+      font-size: 13px;
+      text-shadow: 1px 1px 0 #000;
+    }
+
+    .desktop-icon:active span {
+      background: #000080;
+      border: 1px dotted #fff;
+    }
+
+    .window {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      background: var(--color-window-bg);
+      box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.5);
+      z-index: var(--z-index-base);
+    }
+
+    #window-profile {
+      width: 400px;
+      top: 40px;
+      left: 120px;
+    }
+
+    #window-media {
+      width: 280px;
+      top: 50px;
+      left: 600px;
+    }
+
+    #window-links {
+      width: 220px;
+      top: 450px;
+      left: 60px;
+    }
+
+    #window-paint {
+      width: 420px;
+      top: 320px;
+      left: 350px;
+    }
+
+    #window-viewer {
+      width: 350px;
+      top: 250px;
+      left: 850px;
+    }
+
+    .title-bar {
+      cursor: default;
+    }
+
+    .title-bar.draggable {
+      cursor: grab;
+    }
+
+    .title-bar.draggable:active {
+      cursor: grabbing;
+    }
+
+    .window-body {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .terminal {
+      background-color: var(--color-term-bg);
+      color: var(--color-term-text);
+      font-family: var(--font-mono);
+      font-size: 16px;
+      padding: 10px;
+      border: 2px inset #dfdfdf;
+      height: 200px;
+      overflow-y: auto;
+      text-shadow: 0 0 2px var(--color-glow);
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      height: 1em;
+      background-color: var(--color-term-text);
+      animation: blink 1s step-end infinite;
+      vertical-align: bottom;
+      margin-left: 2px;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    .player-visualizer {
+      background: #000;
+      height: 40px;
+      border: 2px inset #fff;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-end;
+      padding: 0 2px;
+      gap: 1px;
+    }
+
+    .visualizer-bar {
+      flex: 1;
+      background: linear-gradient(to top, #0f0, #ff0, #f00);
+      height: 5%;
+      transition: height 0.1s ease;
+    }
+
+    .scrolling-text-container {
+      background: #000;
+      border: 2px inset #fff;
+      margin-bottom: 5px;
+      overflow: hidden;
+      white-space: nowrap;
+      position: relative;
+      height: 24px;
+      display: flex;
+      align-items: center;
+    }
+
+    .scrolling-text {
+      color: #0f0;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      position: absolute;
+      white-space: nowrap;
+      animation: marquee 10s linear infinite;
+      transform: translateX(100%);
+    }
+
+    @keyframes marquee {
+      0% { transform: translateX(280px); }
+      100% { transform: translateX(-100%); }
+    }
+
+    .volume-slider {
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      gap: 2px;
+      margin-top: 5px;
+    }
+
+    .controls button {
+      min-width: 25px;
+      font-weight: bold;
+      font-family: var(--font-ui);
+    }
+
+    .link-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .link-btn {
+      width: 100%;
+      display: block;
+      text-decoration: none;
+    }
+
+    .link-btn button {
+      width: 100%;
+      text-align: left;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: var(--font-ui);
+    }
+
+    .paint-container {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .paint-toolbar {
+      display: flex;
+      gap: 5px;
+      background: #c0c0c0;
+      padding-bottom: 5px;
+      align-items: center;
+    }
+
+    .tool-btn {
+      min-width: 60px;
+      font-size: 12px;
+    }
+
+    .color-palette {
+      display: flex;
+      gap: 2px;
+      border: 2px inset #fff;
+      padding: 2px;
+      background: #fff;
+    }
+
+    .color-swatch {
+      width: 16px;
+      height: 16px;
+      border: 1px solid #808080;
+      cursor: pointer;
+    }
+
+    .color-swatch.active {
+      border: 1px solid #000;
+      outline: 1px dotted #000;
+    }
+
+    #paint-canvas {
+      background: #fff;
+      border: 2px inset #dfdfdf;
+      cursor: crosshair;
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    .menu-bar {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 5px;
+      padding-bottom: 2px;
+      border-bottom: 1px solid #808080;
+      font-size: 12px;
+    }
+
+    .menu-bar span {
+      cursor: pointer;
+    }
+
+    .menu-bar span:hover {
+      text-decoration: underline;
+      color: #000080;
+    }
+
+    .image-viewport {
+      background-color: #000;
+      border: 2px inset #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 250px;
+      overflow: hidden;
+    }
+
+    .image-viewport img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        overflow-y: auto;
+        height: auto;
+        padding-bottom: 50px;
+      }
+
+      .desktop-icons {
+        position: static;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+        padding: 20px 10px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .desktop-icon {
+        width: 70px;
+      }
+
+      .window {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        width: 94% !important;
+        max-width: 400px;
+        margin: 15px auto;
+        height: auto !important;
+        transform: none !important;
+      }
+
+      .title-bar {
+        cursor: default;
+      }
+      
+      canvas#paint-canvas {
+        width: 100%;
+        height: auto;
+        touch-action: none;
+      }
+      
+      .image-viewport {
+        min-height: 200px;
+      }
+
+      #window-media {
+        width: 94% !important;
+      }
+      
+      .scrolling-text-container {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="desktop-icons">
+    <div class="desktop-icon" data-target="window-profile">
+      <img src="https://win98icons.alexmeub.com/icons/png/computer_explorer-4.png" alt="">
+      <span>My Computer</span>
+    </div>
+    
+    <div class="desktop-icon" data-target="window-links">
+      <img src="https://win98icons.alexmeub.com/icons/png/msie1-2.png" alt="">
+      <span>Internet Explorer</span>
+    </div>
+
+    <div class="desktop-icon" data-target="window-media">
+      <img src="https://win98icons.alexmeub.com/icons/png/cd_audio_cd_a-4.png" alt="">
+      <span>WinAMP</span>
+    </div>
+
+    <div class="desktop-icon" data-target="window-paint">
+      <img src="https://win98icons.alexmeub.com/icons/png/paint_file-4.png" alt="">
+      <span>Paint</span>
+    </div>
+
+    <div class="desktop-icon" data-target="window-viewer">
+      <img src="https://win98icons.alexmeub.com/icons/png/camera3-2.png" alt="">
+      <span>IrfanView</span>
+    </div>
+  </div>
+
+  <div id="window-profile" class="window draggable-window" aria-label="Profile Window">
+    <div class="title-bar draggable">
+      <div class="title-bar-text">are u looking for the machine??</div>
+      <div class="title-bar-controls">
+        <button aria-label="Close" class="btn-close"></button>
+      </div>
+    </div>
+    <div class="window-body">
+      <p class="no-margin-top"><strong>im vertigo,</strong></p>
+	  <p><strong>the machine</strong></p>
+        <p>status: chronically online</p>
+		<p>average a achiever<br>
+		[anarchist/agender/atheist/apathetic/archivist/alienated]<br>
+		foss enjoyer, ancient seeder, ​wannabe vegan</p>
+      <div class="terminal" id="terminal-display">
+        <span id="terminal-text"></span><span class="cursor"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="window-links" class="window draggable-window" aria-label="Links Window">
+    <div class="title-bar draggable">
+      <div class="title-bar-text">me on the other platforms</div>
+      <div class="title-bar-controls">
+        <button aria-label="Close" class="btn-close"></button>
+      </div>
+    </div>
+    <div class="window-body">
+      <div class="link-grid">
+        <a href="https://x.com/fatalerrorista" target="_blank" class="link-btn"><button>Twitter</button></a>
+        <a href="https://open.spotify.com/user/317syv6gkoethbytwnqbusjbdu5y" target="_blank" class="link-btn"><button>Spotify</button></a>
+		<a href="https://backloggd.com/u/XLdooMarine/" target="_blank" class="link-btn"><button>Backloggd</button></a>
+		<a href="https://letterboxd.com/XLdooMarine/" target="_blank" class="link-btn"><button>Letterboxd</button></a>
+		<a href="https://www.last.fm/user/XLdooMarine" target="_blank" class="link-btn"><button>Last.fm</button></a>
+		<a href="https://rateyourmusic.com/~XLdooMarine" target="_blank" class="link-btn"><button>RateYourMusic</button></a>
+      </div>
+    </div>
+  </div>
+
+  <div id="window-media" class="window draggable-window" aria-label="Media Player">
+    <div class="title-bar draggable">
+      <div class="title-bar-text">WinAmp Player</div>
+      <div class="title-bar-controls">
+        <button aria-label="Close" class="btn-close"></button>
+      </div>
+    </div>
+    <div class="window-body">
+      <div class="scrolling-text-container">
+        <div class="scrolling-text" id="player-status">*** NO TAPE INSERTED ***</div>
+      </div>
+      <div class="player-visualizer" id="visualizer-container"></div>
+      <input type="range" min="0" max="100" value="50" class="volume-slider">
+      <div class="controls" id="media-controls">
+        <button data-action="prev">|&lt;</button>
+        <button data-action="play">►</button>
+        <button data-action="pause">||</button>
+        <button data-action="stop">■</button>
+        <button data-action="next">&gt;|</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="window-paint" class="window draggable-window" aria-label="Paint Window">
+    <div class="title-bar draggable">
+      <div class="title-bar-text">untitled - Paint</div>
+      <div class="title-bar-controls">
+        <button aria-label="Close" class="btn-close"></button>
+      </div>
+    </div>
+    <div class="window-body">
+      <div class="paint-container">
+        <div class="paint-toolbar">
+            <div class="color-palette" id="paint-palette"></div>
+            <button class="tool-btn" id="btn-eraser">Eraser</button>
+            <button class="tool-btn" id="btn-clear">Clear</button>
+        </div>
+        <canvas id="paint-canvas" width="380" height="250"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div id="window-viewer" class="window draggable-window" aria-label="Image Viewer">
+    <div class="title-bar draggable">
+      <div class="title-bar-text">IrfanView - [spinning_skull.gif]</div>
+      <div class="title-bar-controls">
+        <button aria-label="Close" class="btn-close"></button>
+      </div>
+    </div>
+    <div class="window-body">
+      <div class="menu-bar">
+    <span style="margin-right: 10px; cursor: default;">File</span>
+    <span style="margin-right: 10px; cursor: default;">Edit</span>
+    <span style="margin-right: 10px; cursor: default;">View</span>
+    <span style="margin-right: 10px; cursor: default;">Page</span>
+
+    <span onclick="alert('sorry i cant help you\n\ni cant even help myself.\n\nerror 404: soul not found.\nthe disk is full of ghosts.\n\nplease stop clicking.\nits cold here.')" 
+          style="cursor: pointer; color: #0000ff; text-decoration: underline; font-family: var(--font-mono);">
+        Help
+    </span>
+	</div>
+      <div class="image-viewport">
+        <img src="https://blob.gifcities.org/gifcities/7TTI5KFNYZKK74UV3TKHMKBVKLYOFJ3L.gif" alt="">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    class WindowManager {
+      constructor(selector = '.draggable-window') {
+        this.windows = document.querySelectorAll(selector);
+        this.icons = document.querySelectorAll('.desktop-icon');
+        this.topZIndex = 100;
+        this.init();
+      }
+
+      init() {
+        this.windows.forEach(windowElement => {
+          const closeBtn = windowElement.querySelector('.btn-close');
+          const titleBar = windowElement.querySelector('.title-bar');
+
+          if (closeBtn) {
+            closeBtn.addEventListener('click', () => windowElement.classList.add('hidden'));
+          }
+          
+          if (titleBar) {
+            titleBar.addEventListener('mousedown', (e) => this.startDrag(e, windowElement));
+          }
+
+          windowElement.addEventListener('mousedown', () => this.bringToFront(windowElement));
+        });
+
+        this.icons.forEach(icon => {
+          icon.addEventListener('click', () => this.handleIconClick(icon));
+        });
+      }
+
+      handleIconClick(icon) {
+        const targetId = icon.dataset.target;
+        const targetWindow = document.getElementById(targetId);
+        if (targetWindow) {
+          targetWindow.classList.remove('hidden');
+          this.bringToFront(targetWindow);
+          if(window.innerWidth <= 768) {
+             targetWindow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      }
+
+      bringToFront(element) {
+        this.topZIndex++;
+        element.style.zIndex = this.topZIndex;
+      }
+
+      startDrag(event, element) {
+        if (window.innerWidth <= 768) return;
+
+        event.preventDefault();
+        this.bringToFront(element);
+        
+        let initialX = event.clientX;
+        let initialY = event.clientY;
+
+        const onMouseMove = (moveEvent) => {
+          moveEvent.preventDefault();
+          const deltaX = initialX - moveEvent.clientX;
+          const deltaY = initialY - moveEvent.clientY;
+          
+          initialX = moveEvent.clientX;
+          initialY = moveEvent.clientY;
+          
+          element.style.top = `${element.offsetTop - deltaY}px`;
+          element.style.left = `${element.offsetLeft - deltaX}px`;
+        };
+
+        const onMouseUp = () => {
+          document.removeEventListener('mouseup', onMouseUp);
+          document.removeEventListener('mousemove', onMouseMove);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      }
+    }
+
+    class Terminal {
+      constructor(elementId, contentList) {
+        this.container = document.getElementById(elementId);
+        this.outputElement = this.container?.querySelector('#terminal-text');
+        this.contentList = contentList;
+        this.lineIndex = 0;
+        this.charIndex = 0;
+        
+        if (this.outputElement) {
+          this.typeCharacter();
+        }
+      }
+
+      typeCharacter() {
+        if (this.lineIndex >= this.contentList.length) return;
+        
+        const currentLine = this.contentList[this.lineIndex];
+        
+        if (this.charIndex < currentLine.length) {
+          this.outputElement.innerHTML += currentLine.charAt(this.charIndex);
+          this.charIndex++;
+          setTimeout(() => this.typeCharacter(), Math.random() * 50 + 30);
+        } else {
+          this.moveToNextLine();
+        }
+      }
+
+      moveToNextLine() {
+        this.outputElement.innerHTML += "<br>";
+        this.lineIndex++;
+        this.charIndex = 0;
+        this.container.scrollTop = this.container.scrollHeight;
+        setTimeout(() => this.typeCharacter(), 300);
+      }
+    }
+
+    class MediaPlayer {
+      constructor() {
+        this.elements = {
+          status: document.getElementById('player-status'),
+          visualizer: document.getElementById('visualizer-container'),
+          controls: document.getElementById('media-controls')
+        };
+        this.state = { 
+          isPlaying: false, 
+          intervalId: null 
+        };
+        this.init();
+      }
+
+      init() {
+        this.createVisualizerBars();
+        this.elements.controls.addEventListener('click', (e) => {
+          const action = e.target.dataset.action;
+          if (action && typeof this[action] === 'function') {
+            this[action]();
+          }
+        });
+      }
+
+      createVisualizerBars() {
+        const count = 15;
+        const fragment = document.createDocumentFragment();
+        for (let i = 0; i < count; i++) {
+          const bar = document.createElement('div');
+          bar.className = 'visualizer-bar';
+          fragment.appendChild(bar);
+        }
+        this.elements.visualizer.appendChild(fragment);
+        this.bars = this.elements.visualizer.querySelectorAll('.visualizer-bar');
+      }
+
+      play() {
+        if (this.state.isPlaying) return;
+        this.state.isPlaying = true;
+        this.elements.status.textContent = "roadside.picnic - deli gibi.flac";
+        
+        this.state.intervalId = setInterval(() => {
+          this.bars.forEach(bar => {
+            bar.style.height = `${Math.floor(Math.random() * 90 + 10)}%`;
+          });
+        }, 100);
+      }
+
+      pause() {
+        this.state.isPlaying = false;
+        this.elements.status.textContent = "*** PAUSED ***";
+        if (this.state.intervalId) {
+          clearInterval(this.state.intervalId);
+        }
+      }
+
+      stop() {
+        this.pause();
+        this.elements.status.textContent = "*** STOPPED ***";
+        this.bars.forEach(bar => bar.style.height = '5%');
+      }
+
+      next() {
+        this.stop();
+        setTimeout(() => this.play(), 200);
+      }
+
+      prev() {
+        this.next();
+      }
+    }
+
+    class PaintApp {
+        constructor() {
+          this.canvas = document.getElementById('paint-canvas');
+          this.ctx = this.canvas.getContext('2d');
+          this.palette = document.getElementById('paint-palette');
+          this.eraserBtn = document.getElementById('btn-eraser');
+          this.clearBtn = document.getElementById('btn-clear');
+          
+          this.state = {
+            isDrawing: false,
+            currentColor: '#000000',
+            lineWidth: 2
+          };
+          
+          this.colors = ['#000000', '#787878', '#FF0000', '#008000', '#0000FF', '#FFFF00', '#FFA500', '#8B4513'];
+          this.init();
+        }
+
+        init() {
+          this.setupPalette();
+          this.setupCanvasEvents();
+          this.setupToolbarEvents();
+          this.resetCanvas();
+        }
+
+        setupPalette() {
+          this.colors.forEach(color => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            swatch.style.backgroundColor = color;
+            swatch.dataset.color = color;
+            
+            if (color === this.state.currentColor) {
+              swatch.classList.add('active');
+            }
+            
+            swatch.addEventListener('click', (e) => this.setColor(e.target.dataset.color, e.target));
+            this.palette.appendChild(swatch);
+          });
+        }
+
+        setupCanvasEvents() {
+          this.canvas.addEventListener('mousedown', (e) => this.startDraw(e));
+          this.canvas.addEventListener('mousemove', (e) => this.draw(e));
+          this.canvas.addEventListener('mouseup', () => this.stopDraw());
+          this.canvas.addEventListener('mouseout', () => this.stopDraw());
+          this.canvas.addEventListener('touchstart', (e) => {
+            if (e.target === this.canvas) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                  clientX: touch.clientX,
+                  clientY: touch.clientY
+                });
+                this.canvas.dispatchEvent(mouseEvent);
+            }
+          }, { passive: false });
+
+          this.canvas.addEventListener('touchmove', (e) => {
+            if (e.target === this.canvas) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                  clientX: touch.clientX,
+                  clientY: touch.clientY
+                });
+                this.canvas.dispatchEvent(mouseEvent);
+            }
+          }, { passive: false });
+
+          this.canvas.addEventListener('touchend', (e) => {
+            const mouseEvent = new MouseEvent('mouseup', {});
+            this.canvas.dispatchEvent(mouseEvent);
+          });
+        }
+
+        setupToolbarEvents() {
+          this.eraserBtn.addEventListener('click', () => this.setColor('#ffffff', null));
+          this.clearBtn.addEventListener('click', () => this.resetCanvas());
+        }
+
+        resetCanvas() {
+          this.ctx.fillStyle = '#ffffff';
+          this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+
+        setColor(color, element) {
+          this.state.currentColor = color;
+          document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+          if (element) element.classList.add('active');
+        }
+
+        getMousePos(event) {
+          const rect = this.canvas.getBoundingClientRect();
+          return {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top
+          };
+        }
+
+        startDraw(event) {
+          this.state.isDrawing = true;
+          this.ctx.beginPath();
+          const pos = this.getMousePos(event);
+          this.ctx.moveTo(pos.x, pos.y);
+        }
+
+        draw(event) {
+          if (!this.state.isDrawing) return;
+          
+          const pos = this.getMousePos(event);
+          this.ctx.lineWidth = this.state.currentColor === '#ffffff' ? 10 : this.state.lineWidth;
+          this.ctx.lineCap = 'round';
+          this.ctx.strokeStyle = this.state.currentColor;
+          
+          this.ctx.lineTo(pos.x, pos.y);
+          this.ctx.stroke();
+        }
+
+        stopDraw() {
+          this.state.isDrawing = false;
+          this.ctx.closePath();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      new WindowManager();
+      new MediaPlayer();
+      new PaintApp();
+      new Terminal('terminal-display', [
+        "AwardBIOS v6.00PG, An Energy Star Ally",
+        "Copyright (C) 1984-1998, Phoenix Technologies, Ltd.",
+        "Main Processor : Pentium III 500MHz",
+        "Memory Testing : 65536K OK",
+        "Detecting IDE drives... Found WDC WD205AA",
+        "-----------------------",
+        "root@world:~# rm -rf rich/ leechers/",
+        "> "
+      ]);
+    });
+  </script>
+</body>
+</html>
+
