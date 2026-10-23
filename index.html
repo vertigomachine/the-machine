@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>vertigo, the machine</title>
+  <link rel="stylesheet" href="https://unpkg.com/98.css">
+  <style>
+    :root {
+      --green: #0f0;
+      --mono: Consolas, "Courier New", monospace;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: #008080;
+      font: 14px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+    }
+
+    .hidden { display: none !important; }
+    .inset { background: #000; border: 2px inset #fff; }
+
+    /* Desktop icons */
+    #icons {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    #icons button {
+      all: unset;
+      width: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      color: #fff;
+      text-align: center;
+      text-shadow: 1px 1px 0 #000;
+      cursor: pointer;
+    }
+
+    #icons img { width: 32px; height: 32px; image-rendering: pixelated; }
+    #icons span { padding: 2px 4px; background: rgba(0, 0, 0, .3); }
+    #icons button:active span { background: #000080; outline: 1px dotted #fff; }
+
+    /* Windows */
+    .window {
+      position: absolute;
+      z-index: 10;
+      box-shadow: 10px 10px 0 rgba(0, 0, 0, .5);
+    }
+
+    .title-bar { cursor: grab; }
+    .title-bar:active { cursor: grabbing; }
+    .window-body { padding: 10px; }
+
+    #profile { width: 400px; top: 40px;  left: 120px; }
+    #links   { width: 220px; top: 450px; left: 60px; }
+    #media   { width: 280px; top: 50px;  left: 600px; }
+    #paint   { width: 420px; top: 320px; left: 350px; }
+    #viewer  { width: 350px; top: 250px; left: 850px; }
+
+    /* Profile + terminal */
+    #profile p { margin: 0 0 15px; }
+
+    #terminal {
+      height: 200px;
+      padding: 10px;
+      overflow-y: auto;
+      border: 2px inset #dfdfdf;
+      background: #000;
+      color: var(--green);
+      font: 16px var(--mono);
+      text-shadow: 0 0 2px rgba(0, 255, 0, .6);
+      white-space: pre-wrap;
+    }
+
+    #terminal::after {
+      content: "";
+      display: inline-block;
+      width: 10px;
+      height: 1em;
+      margin-left: 2px;
+      background: var(--green);
+      vertical-align: bottom;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Links */
+    #links .window-body { display: flex; flex-direction: column; gap: 8px; }
+    #links button { width: 100%; text-align: left; font-weight: bold; }
+
+    /* Media player */
+    #ticker {
+      height: 24px;
+      margin-bottom: 5px;
+      overflow: hidden;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+    }
+
+    #ticker span {
+      color: var(--green);
+      font: 14px var(--mono);
+      animation: marquee 10s linear infinite;
+    }
+
+    @keyframes marquee {
+      from { transform: translateX(280px); }
+      to   { transform: translateX(-100%); }
+    }
+
+    #bars {
+      height: 40px;
+      margin-bottom: 8px;
+      padding: 0 2px;
+      display: flex;
+      align-items: flex-end;
+      gap: 1px;
+    }
+
+    #bars div {
+      flex: 1;
+      height: 5%;
+      background: linear-gradient(to top, #0f0, #ff0, #f00);
+      transition: height .1s;
+    }
+
+    #media input { width: 100%; }
+
+    #controls { display: flex; justify-content: space-between; gap: 2px; margin-top: 5px; }
+    #controls button { min-width: 25px; font-weight: bold; }
+
+    /* Paint */
+    #paint .window-body { display: flex; flex-direction: column; gap: 5px; }
+    #toolbar { display: flex; align-items: center; gap: 5px; }
+    #toolbar button { min-width: 60px; font-size: 12px; }
+
+    #palette { display: flex; gap: 2px; padding: 2px; border: 2px inset #fff; background: #fff; }
+
+    #palette button {
+      all: unset;
+      width: 16px;
+      height: 16px;
+      border: 1px solid #808080;
+      cursor: pointer;
+    }
+
+    #palette .active { border-color: #000; outline: 1px dotted #000; }
+
+    canvas {
+      display: block;
+      border: 2px inset #dfdfdf;
+      background: #fff;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    /* Image viewer */
+    #menu {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 5px;
+      padding-bottom: 2px;
+      border-bottom: 1px solid #808080;
+      font-size: 12px;
+    }
+
+    #menu button { all: unset; cursor: default; }
+    #menu .help { color: #00f; text-decoration: underline; font-family: var(--mono); cursor: pointer; }
+
+    #viewport { min-height: 250px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    #viewport img { max-width: 100%; object-fit: contain; }
+
+    @media (max-width: 768px) {
+      body { height: auto; overflow-y: auto; padding-bottom: 50px; }
+
+      #icons {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+        padding: 20px 10px;
+      }
+
+      #icons button { width: 70px; }
+
+      .window {
+        position: relative;
+        inset: auto;
+        width: 94% !important;
+        max-width: 400px;
+        margin: 15px auto;
+      }
+
+      .title-bar { cursor: default; }
+      canvas { width: 100%; height: auto; }
+      #viewport { min-height: 200px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav id="icons">
+    <button data-open="profile"><img src="https://win98icons.alexmeub.com/icons/png/computer_explorer-4.png" alt=""><span>My Computer</span></button>
+    <button data-open="links"><img src="https://win98icons.alexmeub.com/icons/png/msie1-2.png" alt=""><span>Internet Explorer</span></button>
+    <button data-open="media"><img src="https://win98icons.alexmeub.com/icons/png/cd_audio_cd_a-4.png" alt=""><span>WinAMP</span></button>
+    <button data-open="paint"><img src="https://win98icons.alexmeub.com/icons/png/paint_file-4.png" alt=""><span>Paint</span></button>
+    <button data-open="viewer"><img src="https://win98icons.alexmeub.com/icons/png/camera3-2.png" alt=""><span>IrfanView</span></button>
+  </nav>
+
+  <section id="profile" class="window">
+    <div class="title-bar">
+      <div class="title-bar-text">are u looking for the machine?</div>
+      <div class="title-bar-controls"><button aria-label="Close"></button></div>
+    </div>
+    <div class="window-body">
+      <p><strong>im vertigo, the machine</strong></p>
+      <p>status... chaotic good</p>
+      <p>
+        preferably unlabeled<br>
+        heimatlos, anarchist, agender, agnostic, open source lover, piracy enjoyer, vegetarian, they/he/any
+      </p>
+      <div id="terminal"></div>
+    </div>
+  </section>
+
+  <section id="links" class="window">
+    <div class="title-bar">
+      <div class="title-bar-text">machine on the other platforms</div>
+      <div class="title-bar-controls"><button aria-label="Close"></button></div>
+    </div>
+    <div class="window-body">
+      <a href="https://x.com/XLdooMarine" target="_blank"><button>Twitter</button></a>
+      <a href="https://open.spotify.com/user/317syv6gkoethbytwnqbusjbdu5y" target="_blank"><button>Spotify</button></a>
+      <a href="https://backloggd.com/u/XLdooMarine/" target="_blank"><button>Backloggd</button></a>
+      <a href="https://letterboxd.com/XLdooMarine/" target="_blank"><button>Letterboxd</button></a>
+      <a href="https://www.last.fm/user/XLdooMarine" target="_blank"><button>Last.fm</button></a>
+      <a href="https://rateyourmusic.com/~XLdooMarine" target="_blank"><button>RateYourMusic</button></a>
+    </div>
+  </section>
+
+  <section id="media" class="window">
+    <div class="title-bar">
+      <div class="title-bar-text">WinAmp Player</div>
+      <div class="title-bar-controls"><button aria-label="Close"></button></div>
+    </div>
+    <div class="window-body">
+      <div id="ticker" class="inset"><span>*** NO TAPE INSERTED ***</span></div>
+      <div id="bars" class="inset"></div>
+      <input type="range" min="0" max="100" value="50">
+      <div id="controls">
+        <button data-do="next">|&lt;</button>
+        <button data-do="play">►</button>
+        <button data-do="pause">||</button>
+        <button data-do="stop">■</button>
+        <button data-do="next">&gt;|</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="paint" class="window">
+    <div class="title-bar">
+      <div class="title-bar-text">untitled - Paint</div>
+      <div class="title-bar-controls"><button aria-label="Close"></button></div>
+    </div>
+    <div class="window-body">
+      <div id="toolbar">
+        <div id="palette"></div>
+        <button id="eraser">Eraser</button>
+        <button id="clear">Clear</button>
+      </div>
+      <canvas width="380" height="250"></canvas>
+    </div>
+  </section>
+
+  <section id="viewer" class="window">
+    <div class="title-bar">
+      <div class="title-bar-text">IrfanView - [spinning_skull.gif]</div>
+      <div class="title-bar-controls"><button aria-label="Close"></button></div>
+    </div>
+    <div class="window-body">
+      <div id="menu">
+        <button>File</button>
+        <button>Edit</button>
+        <button>View</button>
+        <button>Page</button>
+        <button class="help">Help</button>
+      </div>
+      <div id="viewport" class="inset">
+        <img src="https://blob.gifcities.org/gifcities/7TTI5KFNYZKK74UV3TKHMKBVKLYOFJ3L.gif" alt="">
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const isMobile = () => matchMedia("(max-width: 768px)").matches;
+
+    /* Windows: open, close, focus, drag */
+    let topZ = 100;
+    const focus = (win) => (win.style.zIndex = ++topZ);
+
+    document.querySelectorAll(".window").forEach((win) => {
+      const bar = $(".title-bar", win);
+
+      $("[aria-label=Close]", win).onclick = () => win.classList.add("hidden");
+      win.addEventListener("pointerdown", () => focus(win));
+
+      bar.addEventListener("pointerdown", (e) => {
+        if (isMobile() || e.target.closest("button")) return;
+        e.preventDefault();
+        bar.setPointerCapture(e.pointerId);
+
+        let { clientX: x, clientY: y } = e;
+        const move = (e) => {
+          win.style.left = `${win.offsetLeft + e.clientX - x}px`;
+          win.style.top = `${win.offsetTop + e.clientY - y}px`;
+          x = e.clientX;
+          y = e.clientY;
+        };
+
+        bar.addEventListener("pointermove", move);
+        bar.addEventListener("pointerup", () => bar.removeEventListener("pointermove", move), { once: true });
+      });
+    });
+
+    document.querySelectorAll("[data-open]").forEach((icon) => {
+      icon.onclick = () => {
+        const win = document.getElementById(icon.dataset.open);
+        win.classList.remove("hidden");
+        focus(win);
+        if (isMobile()) win.scrollIntoView({ behavior: "smooth", block: "center" });
+      };
+    });
+
+    /* Terminal: types out one line at a time */
+    (async () => {
+      const lines = [
+        "AwardBIOS v6.00PG, An Energy Star Ally",
+        "Copyright (C) 1984-1998, Phoenix Technologies, Ltd.",
+        "Main Processor : Pentium III 500MHz",
+        "Memory Testing : 65536K OK",
+        "Detecting IDE drives... Found WDC WD205AA",
+        "-----------------------",
+        "root@world:~# rm -rf rich/ leechers/",
+        "> ",
+      ];
+      const term = $("#terminal");
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      for (const line of lines) {
+        for (const char of line) {
+          term.textContent += char;
+          await sleep(30 + Math.random() * 50);
+        }
+        term.textContent += "\n";
+        term.scrollTop = term.scrollHeight;
+        await sleep(300);
+      }
+    })();
+
+    /* Media player: fake visualizer */
+    const ticker = $("#ticker span");
+    const bars = $("#bars");
+    let timer;
+
+    bars.append(...Array.from({ length: 15 }, () => document.createElement("div")));
+
+    const player = {
+      play() {
+        if (timer) return;
+        ticker.textContent = "roadside.picnic - deli gibi.flac";
+        timer = setInterval(() => {
+          for (const bar of bars.children) bar.style.height = `${10 + Math.random() * 90}%`;
+        }, 100);
+      },
+      pause(label = "*** PAUSED ***") {
+        clearInterval(timer);
+        timer = null;
+        ticker.textContent = label;
+      },
+      stop() {
+        player.pause("*** STOPPED ***");
+        for (const bar of bars.children) bar.style.height = "5%";
+      },
+      next() {
+        player.stop();
+        setTimeout(player.play, 200);
+      },
+    };
+
+    $("#controls").onclick = (e) => player[e.target.dataset.do]?.();
+
+    /* Paint */
+    const canvas = $("canvas");
+    const ctx = canvas.getContext("2d");
+    const palette = $("#palette");
+    const colors = ["#000000", "#787878", "#ff0000", "#008000", "#0000ff", "#ffff00", "#ffa500", "#8b4513"];
+    let color = colors[0];
+    let drawing = false;
+
+    const clearCanvas = () => {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    };
+
+    const pick = (value, swatch) => {
+      color = value;
+      palette.querySelector(".active")?.classList.remove("active");
+      swatch?.classList.add("active");
+    };
+
+    colors.forEach((value) => {
+      const swatch = document.createElement("button");
+      swatch.style.background = value;
+      swatch.onclick = () => pick(value, swatch);
+      palette.append(swatch);
+    });
+    palette.firstChild.classList.add("active");
+
+    const point = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      return [
+        (e.clientX - rect.left) * (canvas.width / rect.width),
+        (e.clientY - rect.top) * (canvas.height / rect.height),
+      ];
+    };
+
+    canvas.onpointerdown = (e) => {
+      drawing = true;
+      canvas.setPointerCapture(e.pointerId);
+      ctx.beginPath();
+      ctx.moveTo(...point(e));
+    };
+
+    canvas.onpointermove = (e) => {
+      if (!drawing) return;
+      ctx.lineWidth = color === "#fff" ? 10 : 2;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = color;
+      ctx.lineTo(...point(e));
+      ctx.stroke();
+    };
+
+    canvas.onpointerup = canvas.onpointercancel = () => (drawing = false);
+
+    $("#eraser").onclick = () => pick("#fff");
+    $("#clear").onclick = clearCanvas;
+    clearCanvas();
+
+    /* Image viewer: help */
+    $(".help").onclick = () =>
+      alert("sorry i cant help you\ni cant even help myself");
+  </script>
+</body>
+</html>
