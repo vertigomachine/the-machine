@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vertigo, the machine</title>
+<style>
+  :root {
+    --bg: #e4e7e8;
+    --fg: #15191b;
+    --dim: #5c6468;
+    --card: #f1f3f3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0d1110; --fg: #b9e3c3; --dim: #6f9a7a; --card: #131918; }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.6 "Courier New", Courier, monospace;
+  }
+  main { max-width: 600px; margin: 0 auto; padding: 40px 16px 64px; display: grid; gap: 24px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.2; }
+  p { margin: 4px 0 0; }
+  a { color: inherit; }
+  .dim { color: var(--dim); }
+
+  section { padding: 0 12px 14px; background: var(--card); border: 2px solid var(--fg); }
+  h2 { margin: 0 -12px 14px; padding: 2px 12px; font-size: 14px; background: var(--fg); color: var(--bg); }
+
+  button, .btn {
+    font: inherit; color: var(--fg); background: var(--card); border: 2px solid var(--fg);
+    padding: 2px 12px; cursor: pointer; text-decoration: none; text-align: center;
+  }
+  button:hover, .btn:hover { background: var(--fg); color: var(--bg); }
+  button:disabled { opacity: .5; cursor: default; }
+  :focus-visible { outline: 3px dashed var(--fg); outline-offset: 2px; }
+
+  .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .note { min-height: 1.6em; margin: 10px 0 0; font-size: 14px; }
+
+  /* boot.log */
+  #log { margin: 0; min-height: 11em; white-space: pre-wrap; overflow-x: auto; font: inherit; }
+  #log::after {
+    content: ""; display: inline-block; width: .6em; height: 1em;
+    background: var(--fg); vertical-align: text-bottom; animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* player */
+  #ticker { margin-bottom: 10px; }
+  #bars { display: flex; align-items: flex-end; gap: 3px; height: 44px; margin-bottom: 12px; border-bottom: 2px solid var(--fg); }
+  #bars i { flex: 1; height: 6%; background: var(--fg); transition: height .12s steps(4); }
+
+  /* paint */
+  .sw { width: 24px; height: 24px; padding: 0; }
+  .sw[aria-pressed="true"] { outline: 3px solid var(--fg); outline-offset: 2px; }
+  canvas { display: block; width: 100%; height: auto; margin-top: 10px; background: #fff; border: 2px solid var(--fg); cursor: crosshair; touch-action: none; }
+
+  /* message form */
+  textarea {
+    display: block; width: 100%; min-height: 110px; padding: 8px; resize: vertical;
+    font: inherit; color: var(--fg); background: var(--bg); border: 2px solid var(--fg);
+  }
+  textarea::placeholder { color: var(--dim); }
+  label { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: 14px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #log::after { animation: none; }
+    #bars i { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <header>
+    <h1>vertigo, the machine</h1>
+    <p class="dim">status... chaotic good</p>
+    <p>preferably unlabeled<br>heimatlos, anarchist, agender, agnostic, open source lover, piracy enjoyer, vegetarian, they/he/any</p>
+  </header>
+
+  <section>
+    <h2>boot.log</h2>
+    <pre id="log"></pre>
+  </section>
+
+  <section>
+    <h2>elsewhere</h2>
+    <nav class="links">
+      <a class="btn" href="https://x.com/XLdooMarine" target="_blank" rel="noopener">Twitter</a>
+      <a class="btn" href="https://open.spotify.com/user/317syv6gkoethbytwnqbusjbdu5y" target="_blank" rel="noopener">Spotify</a>
+      <a class="btn" href="https://backloggd.com/u/XLdooMarine/" target="_blank" rel="noopener">Backloggd</a>
+      <a class="btn" href="https://letterboxd.com/XLdooMarine/" target="_blank" rel="noopener">Letterboxd</a>
+      <a class="btn" href="https://www.last.fm/user/XLdooMarine" target="_blank" rel="noopener">Last.fm</a>
+      <a class="btn" href="https://rateyourmusic.com/~XLdooMarine" target="_blank" rel="noopener">RateYourMusic</a>
+    </nav>
+  </section>
+
+  <section>
+    <h2>player</h2>
+    <div id="ticker" aria-live="polite">no tape inserted</div>
+    <div id="bars" aria-hidden="true"></div>
+    <div class="row">
+      <button id="play" type="button">Play</button>
+      <button id="stop" type="button">Stop</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>paint</h2>
+    <div class="row" id="tools">
+      <button id="eraser" type="button">Eraser</button>
+      <button id="clear" type="button">Clear</button>
+      <button id="save" type="button">Save PNG</button>
+    </div>
+    <canvas id="cv" width="560" height="300" aria-label="Drawing canvas"></canvas>
+    <p class="note" id="saveNote" aria-live="polite"></p>
+  </section>
+
+  <section>
+    <h2>anonymous message</h2>
+    <form id="form" action="https://formsubmit.co/varnish_spur246@aleeas.com" method="post" enctype="multipart/form-data" target="sink">
+      <textarea id="msg" name="message" maxlength="2000" aria-label="Anonymous message"
+        placeholder="Write anything. No name, no email, nothing is recorded about you."></textarea>
+      <label><input type="checkbox" id="attach"> Attach my drawing</label>
+      <input type="file" id="file" name="drawing" hidden>
+      <input type="hidden" name="_captcha" value="false">
+      <button id="send">Send</button>
+      <p class="note" id="sendNote" aria-live="polite"></p>
+    </form>
+    <iframe name="sink" title="Form response" hidden></iframe>
+  </section>
+
+</main>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  /* Boot log */
+  (async () => {
+    const lines = [
+      "AwardBIOS v6.00PG",
+      "Pentium III 500MHz",
+      "Memory test: 65536K OK",
+      "Detecting IDE drives... WDC WD205AA",
+      "-----------------------------------",
+      "root@world:~# rm -rf rich/ leechers/",
+    ];
+    const log = $("#log");
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      log.textContent = lines.join("\n");
+      return;
+    }
+    for (const line of lines) {
+      for (const ch of line) {
+        log.textContent += ch;
+        await sleep(25 + Math.random() * 40);
+      }
+      log.textContent += "\n";
+      await sleep(250);
+    }
+  })();
+
+  /* Player (visual only, no audio) */
+  const bars = $("#bars"), ticker = $("#ticker");
+  for (let i = 0; i < 20; i++) bars.append(document.createElement("i"));
+  let timer = null;
+  const setLevels = (fn) => [...bars.children].forEach((b) => (b.style.height = fn()));
+
+  $("#play").onclick = () => {
+    if (timer) return;
+    ticker.textContent = "roadside.picnic – deli gibi.flac";
+    timer = setInterval(() => setLevels(() => 10 + Math.random() * 90 + "%"), 140);
+  };
+  $("#stop").onclick = () => {
+    clearInterval(timer);
+    timer = null;
+    ticker.textContent = "stopped";
+    setLevels(() => "6%");
+  };
+
+  /* Paint */
+  const cv = $("#cv"), ctx = cv.getContext("2d");
+  const inks = ["#000000", "#808080", "#d00000", "#008000", "#0000d0", "#e0b000"];
+  let color = inks[0], erasing = false, drawing = false;
+
+  const wipe = () => { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height); };
+  const toBlob = () => new Promise((r) => cv.toBlob(r, "image/png"));
+
+  const swatches = inks.map((c, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "sw";
+    b.style.background = c;
+    b.setAttribute("aria-label", "Colour " + (i + 1));
+    b.setAttribute("aria-pressed", i === 0);
+    b.onclick = () => {
+      color = c;
+      erasing = false;
+      swatches.forEach((s) => s.setAttribute("aria-pressed", s === b));
+    };
+    $("#tools").insertBefore(b, $("#eraser"));
+    return b;
+  });
+
+  $("#eraser").onclick = () => {
+    erasing = true;
+    swatches.forEach((s) => s.setAttribute("aria-pressed", false));
+  };
+  $("#clear").onclick = wipe;
+
+  const point = (e) => {
+    const r = cv.getBoundingClientRect();
+    return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height];
+  };
+  cv.onpointerdown = (e) => {
+    drawing = true;
+    cv.setPointerCapture(e.pointerId);
+    ctx.beginPath();
+    ctx.moveTo(...point(e));
+  };
+  cv.onpointermove = (e) => {
+    if (!drawing) return;
+    ctx.lineWidth = erasing ? 14 : 2.5;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = erasing ? "#fff" : color;
+    ctx.lineTo(...point(e));
+    ctx.stroke();
+  };
+  cv.onpointerup = cv.onpointercancel = () => (drawing = false);
+  wipe();
+
+  $("#save").onclick = async () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(await toBlob());
+    a.download = "drawing.png";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    $("#saveNote").textContent = "Saved drawing.png.";
+  };
+
+  /* Anonymous message: a native multipart form posted into a hidden iframe.
+     fetch() with FormData drops the PNG on FormSubmit; a native post keeps it. */
+  const form = $("#form"), send = $("#send"), note = $("#sendNote");
+  let sent = false;
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const withDrawing = $("#attach").checked;
+    if (!$("#msg").value.trim() && !withDrawing) {
+      note.textContent = "Write a message or attach your drawing.";
+      return;
+    }
+    send.disabled = true;
+    const files = new DataTransfer();
+    if (withDrawing) files.items.add(new File([await toBlob()], "drawing.png", { type: "image/png" }));
+    $("#file").files = files.files;
+    sent = true;
+    form.submit();
+  };
+
+  $("iframe[name=sink]").onload = () => {
+    if (!sent) return;
+    sent = false;
+    send.disabled = false;
+    $("#msg").value = "";
+    note.textContent = "Sent anonymously.";
+  };
+</script>
+</body>
+</html>
